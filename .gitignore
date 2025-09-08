@@ -1,0 +1,15 @@
+.vs/
+*.user
+*.suo
+*.dbmdl
+
+# Build results
+bin/
+obj/
+
+# Logs
+*.log
+
+# Angular / Node
+node_modules/
+dist/
