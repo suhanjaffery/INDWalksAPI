@@ -1,8 +1,10 @@
 ﻿using IndWalksAPI.Data;
 using IndWalksAPI.Models.DomainModels;
 using IndWalksAPI.Models.DTO;
+using IndWalksAPI.Repo;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace IndWalksAPI.Controllers
 {
@@ -10,16 +12,19 @@ namespace IndWalksAPI.Controllers
     [ApiController]
     public class RegionController : ControllerBase
     {
-        private INDWalksDbContext dbContext;
-        public RegionController(INDWalksDbContext dbContext)
+        private readonly IRegionRepo regionRepo;
+
+        public RegionController(IRegionRepo regionRepo)
         {
-            this.dbContext = dbContext;
+            this.regionRepo = regionRepo;
         }
+        //private INDWalksDbContext dbContext;
+        
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
             //here will get the info from DB
-            var regions = dbContext.regions.ToList();
+            var regions = await regionRepo.GetAllAsync();
 
             //here will map the model with DTO
             var regionDto = new List<RegionDTO>();
@@ -40,9 +45,9 @@ namespace IndWalksAPI.Controllers
 
         [HttpGet]
         [Route("{id:Guid}")]
-        public IActionResult GetById(Guid id)
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var regions = dbContext.regions.FirstOrDefault(c => c.Id == id);
+            var regions = await regionRepo.GetByIdAsync(id);
             if (regions != null)
             {
                 var regionDto = new RegionDTO
@@ -62,7 +67,7 @@ namespace IndWalksAPI.Controllers
         }
 
         [HttpPost]
-        public ActionResult Create([FromBody] CreateRegionDTO createRegionDTO)
+        public async Task<IActionResult> Create([FromBody] CreateRegionDTO createRegionDTO)
         {
             var region = new Region
             {
@@ -71,8 +76,7 @@ namespace IndWalksAPI.Controllers
                 RegionImageUrl = createRegionDTO.RegionImageUrl
             };
 
-            dbContext.regions.Add(region);
-            dbContext.SaveChanges();
+            await regionRepo.CreateAsync(region);
 
             var regionDto = new RegionDTO
             {
@@ -86,24 +90,23 @@ namespace IndWalksAPI.Controllers
 
         [HttpPut]
         [Route("{id:guid}")]
-        public IActionResult Update([FromRoute]Guid id, [FromBody]UpdateRegionDTO updateRegionDTO)
+        public async Task<IActionResult> Update([FromRoute]Guid id, [FromBody]UpdateRegionDTO updateRegionDTO)
         {
-            var regionModel = dbContext.regions.FirstOrDefault(x => x.Id == id);
-            if (regionModel != null)
+            var regionDomain = new Region
             {
-                regionModel.Name = updateRegionDTO.Name;
-                regionModel.Code = updateRegionDTO.Code;
-                regionModel.RegionImageUrl = updateRegionDTO.RegionImageUrl;
-
-                //dbContext.regions.Update(regionModel);
-                dbContext.SaveChanges();
-
+                Code = updateRegionDTO.Code,
+                Name = updateRegionDTO.Name,
+                RegionImageUrl = updateRegionDTO.RegionImageUrl
+            };
+            regionDomain = await regionRepo.UpdateAsync(id, regionDomain);
+            if (regionDomain != null)
+            {
                 var regionDto = new RegionDTO
                 {
-                    Id = regionModel.Id,
-                    Name = regionModel.Name,
-                    Code = regionModel.Code,
-                    RegionImageUrl = regionModel.RegionImageUrl
+                    Id = regionDomain.Id,
+                    Name = regionDomain.Name,
+                    Code = regionDomain.Code,
+                    RegionImageUrl = regionDomain.RegionImageUrl
                 };
 
                 return Ok(regionDto);
@@ -115,14 +118,11 @@ namespace IndWalksAPI.Controllers
         }
         [HttpDelete]
         [Route("{id:guid}")]
-        public IActionResult Delete([FromRoute] Guid id)
+        public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            var model = dbContext.regions.Find(id);
+            var model = await regionRepo.DeleteAsync(id);
             if (model != null)
             {
-                dbContext.regions.Remove(model);
-                dbContext.SaveChanges();
-
                 var regionDto = new RegionDTO
                 {
                     Id = model.Id,
